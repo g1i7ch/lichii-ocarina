@@ -49,4 +49,3 @@ The source release requires locally supplied game and system data. Build outputs
 Lichii inherits work from Eglantine, Eden, yuzu, Sudachi, and their contributors. Timing work originates with gunvalk's PR #216. Deferred-clear ordering originates with WeslieDE's PR #185. Cross-channel buffer invalidation was adapted from A-Man-With-A-Plan-dev's Ocarina fork. See the guide for pinned source references and the scope of each adaptation.
 
 The source retains its existing GPL and third-party license notices. See [LICENSE.txt](LICENSE.txt), [LICENSES](LICENSES), and the preserved [upstream README](README.upstream.md).
-
