@@ -1,8 +1,8 @@
-# Lichii Ocarina
+# Ocarina of Time — Linux Timing & Rendering Fixes
 
-A fork of [Lichii build 93](https://github.com/zortos293/Lichii/releases/tag/build-93) focused on getting Ocarina of Time running better on PC.
+A Linux-tested fork of [Lichii build 93](https://github.com/zortos293/Lichii/releases/tag/build-93) that fixes slow-motion gameplay below 60 FPS and several rendering issues in Ocarina of Time.
 
-It fixes slow-motion movement below 60 FPS, reduces speed bursts after shader stalls, and includes fixes for rendering corruption. Testing was done on Linux with an Intel Core i9-13900K and NVIDIA RTX 3090 Ti.
+The timing fix was originally tested on Windows in Lichii PR #216. This fork adapts it to build 93, adds handling for long shader stalls, and builds it natively for Linux alongside rendering fixes. Testing was done with an Intel Core i9-13900K and NVIDIA RTX 3090 Ti. The timing patch keeps gameplay moving at the right speed when FPS drops; it does not directly raise the rendering frame rate.
 
 ## Start here
 

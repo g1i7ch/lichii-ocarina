@@ -1,6 +1,8 @@
-# Ocarina timing, rendering, and build guide
+# Ocarina of Time Linux fixes — setup and technical guide
 
 ## Scope and baseline
+
+This is a native Linux build of Lichii with a Windows-tested gameplay-timing patch and additional rendering fixes. Lichii itself supports multiple platforms. The Linux focus here describes where this fork was built and tested.
 
 This fork targets the Ocarina of Time Switch 2 application identified by title ID `0400486024DEC000`. The built-in game patches are restricted to the `main` module with build ID `E0F3CCFAF50065AE4EA01EB5AEB13B1A45DA3348`.
 
