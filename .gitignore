@@ -67,3 +67,25 @@ vulkansdk*.exe
 
 # Build-time generated external sources
 externals/generated
+
+# Local game and profile data
+*.nup
+*.nsp
+*.xci
+*.nca
+*.nsz
+*.xcz
+*.keys
+*.sav
+*.crdownload
+/user/
+/profile/
+/profiles/
+/saves/
+/firmware/
+/keys/
+/nand/
+/sdmc/
+.env
+.env.*
+!.env.example

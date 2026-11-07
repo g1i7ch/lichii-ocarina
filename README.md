@@ -1,97 +1,53 @@
-<!--
-# SPDX-FileCopyrightText: Copyright 2025 Eden Emulator Project
-# SPDX-License-Identifier: GPL-3.0-or-later
+# Lichii Ocarina
 
-# SPDX-FileCopyrightText: 2018 yuzu Emulator Project
-# SPDX-License-Identifier: GPL-2.0-or-later
--->
+An experimental Ocarina of Time timing and rendering fork of [Lichii build 93](https://github.com/zortos293/Lichii/releases/tag/build-93).
 
-<p align="center">
-  <img src="dist/branding/lichii_icon_with_logo.png" alt="Lichii" width="600">
-</p>
+This source snapshot combines a measured-frame-time correction, protection against accelerated movement after shader stalls, and two GPU resource-ordering fixes. It was built and exercised on Linux with an Intel Core i9-13900K and NVIDIA RTX 3090 Ti.
 
-# Lichii
+## Start here
 
-Lichii is an experimental, open-source Nintendo Switch and Switch 2 emulator written in C++. It builds on Eglantine, Eden, yuzu and Sudachi, preserving their contributions while developing this fork's game compatibility and renderer fixes.
+Read the [detailed Ocarina guide](docs/OCARINA_GUIDE.md) for prerequisites, build commands, configuration, source provenance, validation, save handling, and troubleshooting.
 
-This is an independent fork, not an official release of those upstream projects. Lichii is not affiliated with Nintendo.
+```bash
+git clone https://github.com/g1i7ch/lichii-ocarina.git
+cd lichii-ocarina
 
-Visit the [official Lichii website](https://lichii.zortos.me) to find games and compare community compatibility reports.
+cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DYUZU_TESTS=ON -DBUILD_TESTING=ON \
+  -DYUZU_ROOM=OFF \
+  -DENABLE_WEB_SERVICE=OFF \
+  -DENABLE_UPDATE_CHECKER=OFF \
+  -DENABLE_QT_TRANSLATION=OFF
 
-## Downloads and setup
-
-Published builds belong on this fork's [releases page](https://github.com/zortos293/Eglantine/releases). The repository still uses its historical Eglantine name; the desktop application is now Lichii.
-
-On Windows, extract the entire build archive and run **lichii.exe**. Only use games and system files you have legally obtained. Games, keys and firmware are not included.
-
-### Existing saves and settings
-
-The rebrand intentionally retains the existing Eden/Eglantine data directories and configuration keys. It does not move or delete saves, settings or shader caches. Back up your saves before testing experimental builds.
-
-## Compatibility and issue reports
-
-Compatibility and performance vary by game, hardware and driver. Rendering errors, stutters and crashes remain possible. Passing automated tests does not establish that a game renders correctly, and this project makes no universal frame-rate guarantee.
-
-Browse [community compatibility reports](https://lichii.zortos.me/reports) for results with each player's build and setup.
-
-Desktop reporting requires a build containing [PR #303](https://github.com/zortos293/Lichii/pull/303) and is not available in build 88. In builds that include it, play and stop a Switch 2 game, then right-click that game and choose **Submit compatibility report**. Only the latest session in the current Lichii process is eligible.
-
-Confirm the matching website catalog entry and review the editable machine, game, setup, and enabled add-on details prefilled where available. Check the public preview and give explicit consent before submitting. Nothing uploads automatically, and the native v1 reporter does not read or upload logs or files.
-
-When [reporting an issue](https://github.com/zortos293/Eglantine/issues), include:
-
-- The exact build, game version, CPU, GPU and driver version.
-- Relevant settings and steps to reproduce the problem.
-- A screenshot and the log from the affected session, after checking it for personal information.
-
-Do not upload game files, keys, firmware or private account information.
-
-## Building and contributing
-
-See the [build guide](docs/Build.md), [user documentation](docs/user/README.md) and [coding guidelines](docs/Coding.md). Some inherited documentation and internal build target names still use upstream names. The GUI build target remains `yuzu`; its output is `lichii.exe` on Windows and `lichii` on other desktop platforms.
-
-Keep changes focused and distinguish code-level checks from actual gameplay testing.
-
-## Artwork
-Art created by YOB (yobslab)
-The supplied Lichii logo, icon and library artwork are in [dist/branding](dist/branding). Windows, Linux and macOS icon resources are generated from that artwork by [Generate-LichiiIcons.ps1](tools/Generate-LichiiIcons.ps1).
-
-## Support Lichii
-
-Lichii is free and stays free. If you want to help, you can donate in crypto. Donations help pay for the AI tools and build machines used to develop this open-source project faster.
-
-**Solana (SOL)**
-```text
-JepEjfyWjGjhJvHSrqj52KtLjcbbbmUh1iGqerYBF4w
+cmake --build build --parallel 8
+./build/bin/tests '[nx2_oot_time],[patch_manager],[buffer_ports]'
+./tools/ocarina/run.sh /path/to/your/game.nup
 ```
 
-**Ethereum (ETH)**
-```text
-0x055ABa1b80Bc35C836Ce7E9F47c2b3d6C75b5534
-```
+Install the dependencies in the guide before configuring. The helper accepts a local game path and uses the existing emulator configuration. Select **Normal** CPU clock, **High** GPU accuracy, and enable **Real-time speed (built-in)** in the game's Add-Ons. The guide describes the performance tradeoffs.
 
-**Bitcoin (BTC)**
-```text
-bc1qcvxdpf4qvdhqp8ee4s355cjmxrzsphsdwpl8w4
-```
+## Changes in this fork
 
-**BNB Smart Chain (BNB)**
-```text
-0x055ABa1b80Bc35C836Ce7E9F47c2b3d6C75b5534
-```
+- Port Lichii PR #216's measured-frame-time approach into build 93's guarded patch format.
+- Exclude stalls longer than 100 ms from the timing average, reducing post-stall acceleration.
+- Port Lichii PR #185's deferred-clear ordering fix for image blits, DMA writes, and copies.
+- Invalidate deleted GPU-buffer references across active channels, including inactive bindings.
+- Add timing, patch-conflict, and cross-channel buffer-deletion regression coverage.
+- Provide a Linux launch helper that disables frame-ahead overlap and preloads cached pipelines.
 
-**Polygon**
-```text
-0x055ABa1b80Bc35C836Ce7E9F47c2b3d6C75b5534
-```
+## Current results and limits
 
-Send each coin on its matching network. Coins sent on the wrong network can't be recovered.
+Gameplay became usable with more consistent movement timing and fewer visible rendering errors on the test system. Occasional shader-compilation hitches and FPS drops remain. Individual observed scenes ranged roughly from 20 to 40 FPS. These observations came from different scenes and configurations, rather than a controlled performance benchmark.
 
-> [!NOTE]
-> Donations are voluntary gifts and are non-refundable. A donation does not buy any product, service, perk, early access, exclusive build, priority support or say in the project. Every release stays free and public for everyone.
+The tested regression groups pass **282 assertions across 20 test cases**. The full test suite and other hardware platforms have not been validated for this fork. Native Linux was tested. Windows and macOS builds remain untested.
 
-## Credits and license
+The source release requires locally supplied game and system data. Build outputs, personal profiles, game dumps, saves, keys, firmware, shader caches, and machine-specific desktop launchers are excluded from this repository.
 
-Lichii inherits the work of the Eglantine, Eden, yuzu and Sudachi projects and their contributors, including Eglantine's original developer Camille LaVey. Original copyright notices and third-party licenses are retained.
+## Credits and licensing
 
-See [LICENSE.txt](LICENSE.txt) and the source files for applicable license terms.
+Lichii inherits work from Eglantine, Eden, yuzu, Sudachi, and their contributors. Timing work originates with gunvalk's PR #216. Deferred-clear ordering originates with WeslieDE's PR #185. Cross-channel buffer invalidation was adapted from A-Man-With-A-Plan-dev's Ocarina fork. See the guide for pinned source references and the scope of each adaptation.
+
+The source retains its existing GPL and third-party license notices. See [LICENSE.txt](LICENSE.txt), [LICENSES](LICENSES), and the preserved [upstream README](README.upstream.md).
+
+Codex assisted with research, porting, review, regression tests, configuration experiments, and documentation under the repository owner's direction. The upstream patches retain their original attribution. Local changes are experimental and have not been accepted by the upstream projects.

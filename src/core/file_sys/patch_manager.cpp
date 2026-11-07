@@ -30,6 +30,7 @@
 #include "core/file_sys/vfs/vfs_layered.h"
 #include "core/file_sys/vfs/vfs_vector.h"
 #include "core/hle/service/filesystem/filesystem.h"
+#include "core/hle/service/nx2_oot_time.h"
 #include "core/hle/service/ns/language.h"
 #include "core/hle/service/set/settings_server.h"
 #include "core/loader/loader.h"
@@ -86,6 +87,15 @@ constexpr std::array DYNAMIC_FPS_RECORDS{
     BuiltinPatchRecord{0x3C46200, DYNAMIC_FPS_ROUTINE, {}, true},
 };
 
+constexpr std::array<u8, 4> REAL_TIME_HOOK{0x48, 0x7D, 0xD5, 0x14};
+constexpr std::array<u8, 12> REAL_TIME_ROUTINE{
+    0x00, 0x00, 0x80, 0x3F, 0xE8, 0xFF, 0xFF, 0x1C, 0xB8, 0x82, 0x2A, 0x17,
+};
+constexpr std::array REAL_TIME_RECORDS{
+    BuiltinPatchRecord{Service::Nx2OotTime::DeltaOffset, REAL_TIME_ROUTINE, {}, true},
+    BuiltinPatchRecord{Service::Nx2OotTime::HookOffset, REAL_TIME_HOOK, DYNAMIC_FPS_ORIGINAL},
+};
+
 constexpr std::array BUILTIN_PATCHES{
     // Ocarina of Time takes its "dynamic resolution disabled" path, so the 3D renders at full scale
     // instead of following the GPU-time controller down to its 480p floor.
@@ -95,6 +105,13 @@ constexpr std::array BUILTIN_PATCHES{
         .module = "main",
         .build_id = "E0F3CCFAF50065AE4EA01EB5AEB13B1A45DA3348",
         .records = MAX_RESOLUTION_RECORDS,
+    },
+    BuiltinPatch{
+        .name = "Real-time speed (built-in)",
+        .title_id = Service::Nx2OotTime::ProgramId,
+        .module = "main",
+        .build_id = "E0F3CCFAF50065AE4EA01EB5AEB13B1A45DA3348",
+        .records = REAL_TIME_RECORDS,
     },
     BuiltinPatch{
         .name = "Dynamic FPS by Dark (built-in)",

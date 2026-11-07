@@ -186,6 +186,12 @@ struct BufferCacheTestAccess {
     static Buffer& Get(Cache& cache, BufferId id) {
         return cache.slot_buffers[id];
     }
+    static BufferCacheChannelInfo& CurrentChannel(Cache& cache) {
+        return *cache.channel_state;
+    }
+    static void Delete(Cache& cache, BufferId id) {
+        cache.DeleteBuffer(id);
+    }
     static void Dirty(Cache& cache, DAddr address, u64 size) {
         cache.memory_tracker.MarkRegionAsGpuModified(address, size);
         cache.gpu_modified_ranges.Add(address, size);
@@ -538,6 +544,58 @@ TEST_CASE("Command page readers remain ordered during batch completion", "[buffe
     REQUIRE(after == Cache::Nx2ListRead::Synced);
     REQUIRE(f.runtime.finishes == 1);
     REQUIRE(f.runtime.downloads == 1);
+}
+
+TEST_CASE("Deleted buffers invalidate bindings on other GPU channels", "[buffer_ports]") {
+    Fixture f;
+    Tegra::Control::ChannelState first{0}, second{1};
+    for (auto* state : {&first, &second}) {
+        state->memory_manager = &*f.memory;
+        state->payload.emplace(f.system, *f.memory, *state);
+        f.cache->CreateChannel(*state);
+    }
+    const auto deleted = Access::Add(*f.cache, 0x20000, 0x10000);
+    const auto retained = Access::Add(*f.cache, 0x30000, 0x10000);
+    f.cache->BindToChannel(first.bind_id);
+    auto& active = Access::CurrentChannel(*f.cache);
+    active.index_buffer.buffer_id = deleted;
+
+    f.cache->BindToChannel(second.bind_id);
+    auto& other = Access::CurrentChannel(*f.cache);
+    const std::array bindings{
+        &other.index_buffer, &other.vertex_buffers[3], &other.uniform_buffers[1][2],
+        &other.storage_buffers[1][2], &other.transform_feedback_buffers[0],
+        &other.compute_uniform_buffers[2], &other.compute_storage_buffers[2],
+    };
+    for (auto* binding : bindings) {
+        *binding = {.device_addr = 0x20000, .size = 0x1000, .buffer_id = deleted};
+    }
+    other.vertex_buffers[4].buffer_id = retained;
+    other.uniform_buffers[1][3].buffer_id = retained;
+    other.maxwell3d.dirty.flags.reset();
+    other.has_deleted_buffers = false;
+
+    f.cache->BindToChannel(first.bind_id);
+    Access::Delete(*f.cache, deleted);
+    REQUIRE(active.index_buffer.buffer_id == VideoCommon::BufferId{});
+    REQUIRE(active.has_deleted_buffers);
+
+    // Reuse the freed slot while the second channel is unbound, then return to it.
+    REQUIRE(Access::Add(*f.cache, 0x40000, 0x10000) == deleted);
+    f.cache->BindToChannel(second.bind_id);
+    REQUIRE(&Access::CurrentChannel(*f.cache) == &other);
+    for (const auto* binding : bindings) {
+        REQUIRE(binding->buffer_id == VideoCommon::BufferId{});
+        REQUIRE(binding->device_addr == 0x20000);
+        REQUIRE(binding->size == 0x1000);
+    }
+    REQUIRE(other.has_deleted_buffers);
+    REQUIRE(other.maxwell3d.dirty.flags[VideoCommon::Dirty::IndexBuffer]);
+    REQUIRE(other.maxwell3d.dirty.flags[VideoCommon::Dirty::VertexBuffers]);
+    REQUIRE(other.maxwell3d.dirty.flags[VideoCommon::Dirty::VertexBuffer0 + 3]);
+    REQUIRE_FALSE(other.maxwell3d.dirty.flags[VideoCommon::Dirty::VertexBuffer0 + 4]);
+    REQUIRE(other.vertex_buffers[4].buffer_id == retained);
+    REQUIRE(other.uniform_buffers[1][3].buffer_id == retained);
 }
 
 TEST_CASE("Native uniform banks upload directly without overwriting GPU-owned bytes",

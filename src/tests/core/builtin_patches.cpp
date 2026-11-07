@@ -201,6 +201,70 @@ TEST_CASE("Built-in Max Resolution patch defers to a user mod at the same offset
     }
 }
 
+namespace {
+
+constexpr std::string_view RealTime = "Real-time speed (built-in)";
+constexpr std::array<std::pair<size_t, u32>, 4> RealTimeOriginals{{
+    {0x3C461E0, 0x00000000},
+    {0x3C461E4, 0x00000000},
+    {0x3C461E8, 0x00000000},
+    {0x6E6CC4, 0x1E201828},
+}};
+
+std::vector<u8> MakeRealTimeMain() {
+    std::vector<u8> nso(sizeof(Loader::NSOHeader) + 0x3C47000);
+    Loader::NSOHeader header{};
+    header.magic = Common::MakeMagic('N', 'S', 'O', '0');
+    header.build_id = OcarinaBuildId;
+    header.segments[0].size = 0x3C461D0;
+    header.segments[1].location = 0x3C47000;
+    std::memcpy(nso.data(), &header, sizeof(header));
+    for (const auto& [offset, word] : RealTimeOriginals) {
+        std::memcpy(nso.data() + sizeof(Loader::NSOHeader) + offset, &word, sizeof(word));
+    }
+    return nso;
+}
+
+u32 ModuleWord(const std::vector<u8>& nso, size_t offset) {
+    u32 word;
+    std::memcpy(&word, nso.data() + sizeof(Loader::NSOHeader) + offset, sizeof(word));
+    return word;
+}
+
+} // Anonymous namespace
+
+TEST_CASE("Built-in real-time patch applies all of its words or none", "[patch_manager]") {
+    PatchManagerTestContext context;
+    auto nso = MakeRealTimeMain();
+
+    SECTION("All words apply, on by default") {
+        const auto patched = context.Manager().PatchNSO(nso, "main");
+        REQUIRE(ModuleWord(patched, 0x3C461E0) == 0x3F800000);
+        REQUIRE(ModuleWord(patched, 0x3C461E4) == 0x1CFFFFE8);
+        REQUIRE(ModuleWord(patched, 0x3C461E8) == 0x172A82B8);
+        REQUIRE(ModuleWord(patched, 0x6E6CC4) == 0x14D57D48);
+    }
+
+    SECTION("One changed word leaves the hook out") {
+        const u32 other = 0xD503201F;
+        std::memcpy(nso.data() + sizeof(Loader::NSOHeader) + 0x3C461E4, &other, sizeof(other));
+        const auto patched = context.Manager().PatchNSO(nso, "main");
+        REQUIRE(ModuleWord(patched, 0x3C461E0) == 0x00000000);
+        REQUIRE(ModuleWord(patched, 0x6E6CC4) == 0x1E201828);
+    }
+
+    SECTION("Disabled in Add-Ons skips") {
+        Settings::values.disabled_addons[OcarinaTitleId] = {std::string{RealTime}};
+        const auto patched = context.Manager().PatchNSO(nso, "main");
+        REQUIRE(ModuleWord(patched, 0x6E6CC4) == 0x1E201828);
+    }
+
+    SECTION("It is one Add-Ons entry") {
+        const auto patches = context.Manager().GetPatches();
+        REQUIRE(std::ranges::count(patches, RealTime, &FileSys::Patch::name) == 1);
+    }
+}
+
 TEST_CASE("Built-in Max Resolution patch is listed and loaded for Ocarina's main",
           "[patch_manager]") {
     PatchManagerTestContext context;
@@ -244,8 +308,19 @@ std::vector<u8> MakeDynamicMain() {
 
 } // Anonymous namespace
 
+TEST_CASE("Real-time timing wins when both Ocarina timing add-ons are enabled", "[patch_manager]") {
+    PatchManagerTestContext context;
+    const auto nso = MakeDynamicMain();
+    const auto patched = context.Manager().PatchNSO(nso, "main");
+    REQUIRE(WordAt(patched, DynamicCallOffset) == 0x14D57D48);
+    REQUIRE(ModuleWord(patched, 0x3C461E0) == 0x3F800000);
+    REQUIRE(WordAt(patched, DynamicRoutineOffset) == 0);
+    REQUIRE(WordAt(patched, DynamicStateOffset) == 0);
+}
+
 TEST_CASE("Built-in Dynamic FPS defaults on and can be disabled in Add-Ons", "[patch_manager]") {
     PatchManagerTestContext context;
+    Settings::values.disabled_addons[OcarinaTitleId] = {std::string{RealTime}};
     const auto manager = context.Manager();
     const auto enabled = [&] {
         const auto patches = manager.GetPatches();
@@ -267,12 +342,12 @@ TEST_CASE("Built-in Dynamic FPS defaults on and can be disabled in Add-Ons", "[p
         "4C0500F98201239EA301239E4218231E4208211EC300001C0309231E4020231E4D000054"
         "4840201EC0035FD60AD7833F");
     REQUIRE(WordAt(patched) == BranchInstruction);
-    Settings::values.disabled_addons[OcarinaTitleId] = {std::string{DynamicFps}};
+    Settings::values.disabled_addons[OcarinaTitleId] = {std::string{DynamicFps}, std::string{RealTime}};
     REQUIRE_FALSE(enabled());
     REQUIRE(WordAt(manager.PatchNSO(nso, "main"), DynamicCallOffset) == DynamicOriginalInstruction);
     REQUIRE(WordAt(manager.PatchNSO(nso, "main"), DynamicRoutineOffset) == 0);
 
-    Settings::values.disabled_addons[OcarinaTitleId] = {std::string{MaxResolution}};
+    Settings::values.disabled_addons[OcarinaTitleId] = {std::string{MaxResolution}, std::string{RealTime}};
     REQUIRE(enabled());
     patched = manager.PatchNSO(nso, "main");
     REQUIRE(WordAt(patched, DynamicCallOffset) == DynamicCallInstruction);
@@ -285,7 +360,8 @@ TEST_CASE("Built-in Dynamic FPS defaults on and can be disabled in Add-Ons", "[p
 TEST_CASE("Built-in Dynamic FPS rejects mismatched or truncated modules transactionally",
           "[patch_manager]") {
     PatchManagerTestContext context;
-    Settings::values.disabled_addons[OcarinaTitleId] = {std::string{MaxResolution}};
+    Settings::values.disabled_addons[OcarinaTitleId] = {std::string{RealTime}};
+    Settings::values.disabled_addons[OcarinaTitleId] = {std::string{MaxResolution}, std::string{RealTime}};
     auto nso = MakeDynamicMain();
     std::string module = "main";
     u64 title = OcarinaTitleId;
@@ -358,7 +434,8 @@ TEST_CASE("Built-in Dynamic FPS leaves both records alone when a user mod change
         offset = DynamicStateOffset;
     }
     PatchManagerTestContext context{mod_word, offset};
-    Settings::values.disabled_addons[OcarinaTitleId] = {std::string{MaxResolution}};
+    Settings::values.disabled_addons[OcarinaTitleId] = {std::string{RealTime}};
+    Settings::values.disabled_addons[OcarinaTitleId] = {std::string{MaxResolution}, std::string{RealTime}};
     const auto nso = MakeDynamicMain();
     auto expected = nso;
     std::memcpy(expected.data() + offset, &mod_word, sizeof(mod_word));
