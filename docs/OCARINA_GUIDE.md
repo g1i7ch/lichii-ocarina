@@ -191,8 +191,6 @@ The original machine often operated around 20–40 FPS depending on scene and se
 
 The older Dark timing routine remains upstream code and retains its original credit. It is available for comparison through Add-Ons, subject to the shared-hook protection above.
 
-Codex assisted under the repository owner's direction. This includes researching upstream fixes, adapting the timing and buffer changes, reviewing them, adding regressions, running targeted tests, and writing this guide. Existing upstream authorship and license notices remain in place.
-
 ## Reporting a regression
 
 Include the repository commit, OS, GPU driver, game module build ID, relevant settings, reproduction route, whether the cache was warm, and the filtered test result. Compare the same save and camera position when reporting FPS.

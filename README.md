@@ -1,8 +1,8 @@
 # Lichii Ocarina
 
-An experimental Ocarina of Time timing and rendering fork of [Lichii build 93](https://github.com/zortos293/Lichii/releases/tag/build-93).
+A fork of [Lichii build 93](https://github.com/zortos293/Lichii/releases/tag/build-93) focused on getting Ocarina of Time running better on PC.
 
-This source snapshot combines a measured-frame-time correction, protection against accelerated movement after shader stalls, and two GPU resource-ordering fixes. It was built and exercised on Linux with an Intel Core i9-13900K and NVIDIA RTX 3090 Ti.
+It fixes slow-motion movement below 60 FPS, reduces speed bursts after shader stalls, and includes fixes for rendering corruption. Testing was done on Linux with an Intel Core i9-13900K and NVIDIA RTX 3090 Ti.
 
 ## Start here
 
@@ -38,7 +38,7 @@ Install the dependencies in the guide before configuring. The helper accepts a l
 
 ## Current results and limits
 
-Gameplay became usable with more consistent movement timing and fewer visible rendering errors on the test system. Occasional shader-compilation hitches and FPS drops remain. Individual observed scenes ranged roughly from 20 to 40 FPS. These observations came from different scenes and configurations, rather than a controlled performance benchmark.
+On the test system, movement felt more consistent and rendering errors became less frequent. Shader-compilation hitches and FPS drops still happen. We saw roughly 20–40 FPS across different scenes and settings, so treat those numbers as a rough idea of performance.
 
 The tested regression groups pass **282 assertions across 20 test cases**. The full test suite and other hardware platforms have not been validated for this fork. Native Linux was tested. Windows and macOS builds remain untested.
 
@@ -50,4 +50,3 @@ Lichii inherits work from Eglantine, Eden, yuzu, Sudachi, and their contributors
 
 The source retains its existing GPL and third-party license notices. See [LICENSE.txt](LICENSE.txt), [LICENSES](LICENSES), and the preserved [upstream README](README.upstream.md).
 
-Codex assisted with research, porting, review, regression tests, configuration experiments, and documentation under the repository owner's direction. The upstream patches retain their original attribution. Local changes are experimental and have not been accepted by the upstream projects.
