@@ -1,3 +1,5 @@
+> **Superseded:** this branch is the build-93 patch set. Current work is on [`build-125-ocarina`](https://github.com/g1i7ch/lichii-ocarina/tree/build-125-ocarina) (upstream build-125 + the cross-channel buffer fix; the timing patch and deferred-clear port are upstream now). See [docs/OCARINA_LINUX_NOTES.md](https://github.com/g1i7ch/lichii-ocarina/blob/build-125-ocarina/docs/OCARINA_LINUX_NOTES.md).
+
 # Ocarina of Time — Linux Timing & Rendering Fixes
 
 A Linux-tested fork of [Lichii build 93](https://github.com/zortos293/Lichii/releases/tag/build-93) that fixes slow-motion gameplay below 60 FPS and several rendering issues in Ocarina of Time.
