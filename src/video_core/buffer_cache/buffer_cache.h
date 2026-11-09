@@ -2981,6 +2981,37 @@ void BufferCache<P>::DeleteBuffer(BufferId buffer_id, bool do_not_mark) {
     replace(channel_state->compute_uniform_buffers);
     replace(channel_state->compute_storage_buffers);
 
+    // Ocarina uses several GPU channels. A deleted slot must not survive in another channel's
+    // bindings and later resolve to an unrelated buffer that reuses the same id.
+    for (const size_t other_id : this->active_channel_ids) {
+        auto& other = this->channel_storage[other_id];
+        if (&other == channel_state) {
+            continue;
+        }
+        auto& other_flags = other.maxwell3d.dirty.flags;
+        if (other.index_buffer.buffer_id == buffer_id) {
+            other.index_buffer.buffer_id = BufferId{};
+            other_flags[Dirty::IndexBuffer] = true;
+        }
+        for (u32 index = 0; index < other.vertex_buffers.size(); ++index) {
+            if (other.vertex_buffers[index].buffer_id == buffer_id) {
+                other.vertex_buffers[index].buffer_id = BufferId{};
+                other_flags[Dirty::VertexBuffers] = true;
+                other_flags[Dirty::VertexBuffer0 + index] = true;
+            }
+        }
+        std::ranges::for_each(other.uniform_buffers, replace);
+        std::ranges::for_each(other.storage_buffers, replace);
+        replace(other.transform_feedback_buffers);
+        replace(other.compute_uniform_buffers);
+        replace(other.compute_storage_buffers);
+        if constexpr (HAS_PERSISTENT_UNIFORM_BUFFER_BINDINGS) {
+            other.dirty_uniform_buffers.fill(~u32{0});
+            other.uniform_buffer_binding_sizes.fill({});
+        }
+        other.has_deleted_buffers = true;
+    }
+
     // Adapted from the pre-refresh branch: merged buffers invalidate segment references too.
     InvalidateMultiRangeSegments(std::span{graphics_segments}, buffer_id);
     InvalidateMultiRangeSegments(std::span{compute_segments}, buffer_id);
