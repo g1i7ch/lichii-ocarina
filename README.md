@@ -1,3 +1,5 @@
+> **Ocarina of Time on Linux:** this branch (`build-125-ocarina`) carries one extra fix and Linux launch tooling; see [docs/OCARINA_LINUX_NOTES.md](docs/OCARINA_LINUX_NOTES.md).
+
 <!--
 # SPDX-FileCopyrightText: Copyright 2025 Eden Emulator Project
 # SPDX-License-Identifier: GPL-3.0-or-later
